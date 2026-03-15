@@ -32,7 +32,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShoppingBag size={20} className="text-amber-400" />
-            <span className="font-bold text-white text-lg">Metro</span>
+            <div>
+              <span className="font-bold text-white text-lg">Metro</span>
+              <span className="font-bold text-amber-400 text-lg"> Wholesale</span>
+            </div>
           </div>
           <CartDrawer />
         </div>

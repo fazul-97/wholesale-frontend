@@ -45,14 +45,15 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Nav */}
-      <header className="sticky top-0 z-40 bg-navy shadow-md">
+      <header className="sticky top-0 z-40 bg-[#0f2d1f] shadow-md">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Store size={20} className="text-amber-400" />
+            <Store size={20} className="text-emerald-400" />
             <div>
-              <span className="font-bold text-white text-lg">Metro Store</span>
+              <span className="font-bold text-white text-lg">Metro</span>
+              <span className="font-bold text-emerald-400 text-lg"> Admin</span>
               {role && (
-                <span className="ml-2 text-xs bg-amber-400 text-navy font-semibold px-2 py-0.5 rounded-full">
+                <span className="ml-2 text-xs bg-emerald-500 text-white font-semibold px-2 py-0.5 rounded-full">
                   {ROLE_LABELS[role] ?? role}
                 </span>
               )}
@@ -75,7 +76,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             return (
               <Link key={href} href={href} className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                active ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white hover:text-navy'
+                active ? 'bg-[#0f2d1f] text-white' : 'text-gray-600 hover:bg-white hover:text-[#0f2d1f]'
               )}>
                 <Icon size={18} />
                 {label}
@@ -98,7 +99,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             return (
               <Link key={href} href={href} className={cn(
                 'flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-xs font-medium transition-colors',
-                active ? 'text-amber-600' : 'text-gray-400'
+                active ? 'text-emerald-600' : 'text-gray-400'
               )}>
                 <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
                 <span className="truncate text-[10px]">{label}</span>
