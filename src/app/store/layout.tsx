@@ -2,17 +2,27 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Tag, Store } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Tag, Store, BarChart2, DollarSign, ClipboardList, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 
-const navItems = [
-  { href: '/store', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/store/orders', icon: ShoppingBag, label: 'Orders' },
-  { href: '/store/products', icon: Package, label: 'Products' },
-  { href: '/store/discounts', icon: Tag, label: 'Discounts' },
+const ALL_NAV = [
+  { href: '/store',               icon: LayoutDashboard, label: 'Dashboard',      roles: ['STORE_OWNER','CASHIER','DRIVER'] },
+  { href: '/store/orders',        icon: ShoppingBag,     label: 'Orders',         roles: ['STORE_OWNER','CASHIER'] },
+  { href: '/store/deliveries',    icon: Truck,           label: 'Deliveries',     roles: ['STORE_OWNER','DRIVER'] },
+  { href: '/store/products',      icon: Package,         label: 'Products',       roles: ['STORE_OWNER'] },
+  { href: '/store/analytics',     icon: BarChart2,       label: 'Analytics',      roles: ['STORE_OWNER'] },
+  { href: '/store/finance',       icon: DollarSign,      label: 'Finance',        roles: ['STORE_OWNER','CASHIER'] },
+  { href: '/store/reconciliation',icon: ClipboardList,   label: 'Reconciliation', roles: ['STORE_OWNER','CASHIER'] },
+  { href: '/store/discounts',     icon: Tag,             label: 'Discounts',      roles: ['STORE_OWNER'] },
 ];
+
+const ROLE_LABELS: Record<string, string> = {
+  STORE_OWNER: 'Owner',
+  CASHIER: 'Cashier',
+  DRIVER: 'Driver',
+};
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,36 +30,53 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const logout = useLogout();
   const { user, _hasHydrated } = useAuthStore();
 
+  const role = user?.role ?? '';
+  const navItems = ALL_NAV.filter(n => n.roles.includes(role));
+
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!user || user.role !== 'STORE_OWNER') {
+    if (!user || !['STORE_OWNER','CASHIER','DRIVER'].includes(user.role)) {
       router.replace('/store/login');
     }
   }, [_hasHydrated, user, router]);
+
+  if (!_hasHydrated) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Nav */}
       <header className="sticky top-0 z-40 bg-navy shadow-md">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Store size={20} className="text-amber-400" />
-            <span className="font-bold text-white text-lg">Metro Store</span>
+            <div>
+              <span className="font-bold text-white text-lg">Metro Store</span>
+              {role && (
+                <span className="ml-2 text-xs bg-amber-400 text-navy font-semibold px-2 py-0.5 rounded-full">
+                  {ROLE_LABELS[role] ?? role}
+                </span>
+              )}
+            </div>
           </div>
-          <button onClick={logout} className="text-xs text-gray-400 hover:text-amber-400 transition-colors">
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            {user?.name && <span className="text-xs text-gray-400 hidden sm:block">{user.name}</span>}
+            <button onClick={logout} className="text-xs text-gray-400 hover:text-amber-400 transition-colors">
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Side Nav (desktop) + Bottom Nav (mobile) */}
-      <div className="flex flex-1 max-w-4xl mx-auto w-full">
+      <div className="flex flex-1 max-w-5xl mx-auto w-full">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-48 py-6 pr-4 gap-1 flex-shrink-0">
+        <aside className="hidden md:flex flex-col w-52 py-6 pr-4 gap-1 flex-shrink-0">
           {navItems.map(({ href, icon: Icon, label }) => {
             const active = href === '/store' ? pathname === href : pathname.startsWith(href);
             return (
-              <Link key={href} href={href} className={cn('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors', active ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white hover:text-navy')}>
+              <Link key={href} href={href} className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
+                active ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white hover:text-navy'
+              )}>
                 <Icon size={18} />
                 {label}
               </Link>
@@ -63,15 +90,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile Bottom Nav — show max 5 items */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 md:hidden">
         <div className="flex">
-          {navItems.map(({ href, icon: Icon, label }) => {
+          {navItems.slice(0, 5).map(({ href, icon: Icon, label }) => {
             const active = href === '/store' ? pathname === href : pathname.startsWith(href);
             return (
-              <Link key={href} href={href} className={cn('flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-xs font-medium transition-colors', active ? 'text-amber-600' : 'text-gray-400')}>
+              <Link key={href} href={href} className={cn(
+                'flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-xs font-medium transition-colors',
+                active ? 'text-amber-600' : 'text-gray-400'
+              )}>
                 <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                {label}
+                <span className="truncate text-[10px]">{label}</span>
               </Link>
             );
           })}
