@@ -132,7 +132,7 @@ export default function CartPage() {
     </div>
   );
 
-  if (items.length === 0) return (
+  if (items.length === 0 && !showMpesa) return (
     <div className="flex flex-col items-center justify-center py-20 text-center px-4">
       <ShoppingCart size={56} className="text-gray-200 mb-4" />
       <h2 className="text-xl font-bold text-navy mb-2">Your cart is empty</h2>
