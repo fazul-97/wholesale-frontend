@@ -1,0 +1,18 @@
+[build]
+  command   = "npm run build"
+  publish   = ".next"
+
+[build.environment]
+  # API is served from the same Netlify site via /api/* redirect
+  NEXT_PUBLIC_API_URL = "/api"
+  NODE_VERSION        = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Route all /api/* calls to the mock API serverless function
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/api"
+  status = 200
+  force  = true
