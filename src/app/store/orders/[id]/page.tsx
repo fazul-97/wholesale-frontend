@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, MessageSquare, CheckCircle, Truck, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, MessageSquare, CheckCircle, Truck, XCircle, Loader2, Smartphone, Banknote, DollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useStoreOrder, useConfirmOrder, useUpdateOrderStatus } from '@/hooks/useApi';
 import { OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
 import { QuantityDiff } from '@/components/ui/QuantityDiff';
@@ -37,6 +38,10 @@ export default function StoreOrderDetailPage({ params }: { params: { id: string 
   const [noteText, setNoteText] = useState('');
   const [noteLoading, setNoteLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'CASH'>('MPESA');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false);
 
   const o = order as Order | undefined;
 
@@ -55,6 +60,16 @@ export default function StoreOrderDetailPage({ params }: { params: { id: string 
 
   const submitStatus = (next: string) => {
     updateStatus.mutate({ status: next });
+  };
+
+  const submitPayment = async () => {
+    setPaymentLoading(true);
+    try {
+      await api.post(`/orders/store/${id}/payment`, { method: paymentMethod, amount: Number(paymentAmount) || o?.total });
+      qc.invalidateQueries({ queryKey: ['store-order', id] });
+      setPaymentDone(true);
+    } catch { /* ignore */ }
+    finally { setPaymentLoading(false); }
   };
 
   const submitNote = async () => {
@@ -180,6 +195,70 @@ export default function StoreOrderDetailPage({ params }: { params: { id: string 
           {noteLoading ? <Loader2 size={14} className="animate-spin" /> : 'Save Note'}
         </button>
       </div>
+
+      {/* Record Payment — show for DELIVERED orders */}
+      {o.status === 'DELIVERED' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={16} className="text-emerald-600" />
+            <h2 className="font-semibold text-navy text-sm">Payment</h2>
+          </div>
+
+          {paymentDone ? (
+            <div className="flex items-center gap-3 bg-green-50 rounded-xl p-3">
+              <CheckCircle size={20} className="text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-green-800">Payment Recorded</p>
+                <p className="text-xs text-green-600">{paymentMethod === 'MPESA' ? 'M-Pesa' : 'Cash'} · {fmt.currency(Number(paymentAmount) || o.total)}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Method */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {([
+                  { id: 'MPESA' as const, label: 'M-Pesa', icon: Smartphone, color: 'border-green-500 bg-green-50 text-green-700' },
+                  { id: 'CASH'  as const, label: 'Cash',   icon: Banknote,   color: 'border-amber-500 bg-amber-50 text-amber-700' },
+                ]).map(({ id, label, icon: Icon, color }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPaymentMethod(id)}
+                    className={cn(
+                      'flex items-center gap-2 p-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
+                      paymentMethod === id ? color : 'border-gray-100 text-gray-400 hover:border-gray-200'
+                    )}
+                  >
+                    <Icon size={15} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Amount */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">KES</span>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={e => setPaymentAmount(e.target.value)}
+                    placeholder={o.total.toString()}
+                    className="w-full border border-gray-200 rounded-xl pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <button
+                  onClick={submitPayment}
+                  disabled={paymentLoading}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {paymentLoading ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle size={14} /> Mark Paid</>}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5">Leave amount blank to use order total ({fmt.currency(o.total)})</p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Status Actions */}
       {transitions.length > 0 && (

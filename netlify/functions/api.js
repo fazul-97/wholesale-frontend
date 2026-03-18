@@ -135,7 +135,7 @@ function routeStatic(method, path, body) {
     case 'GET /api/orders/last':
       return ok(ORDERS[0]);
     case 'POST /api/orders':
-      return ok({ id:'o_new', orderNumber:'MW-00099', status:'PENDING', total:999, createdAt: new Date().toISOString() });
+      return ok({ id:'o_new', orderNumber:'MW-00099', status:'PENDING', total:999, paymentMethod: body.paymentMethod || 'MPESA', createdAt: new Date().toISOString() });
     case 'POST /api/orders/validate-discount': {
       const d = DISCOUNTS.find(x => x.code === body.code && x.isActive);
       if (d) {
@@ -255,6 +255,12 @@ function routeDynamic(method, path, body) {
 
   m = path.match(/^\/api\/orders\/store\/([^/]+)\/notes$/);
   if (m && method === 'POST') return raw({ success: true });
+
+  m = path.match(/^\/api\/orders\/store\/([^/]+)\/payment$/);
+  if (m && method === 'POST') {
+    const txnId = 'TXN' + Date.now();
+    return ok({ id: txnId, orderId: m[1], method: body.method || 'MPESA', amount: body.amount, status: 'PAID', recordedAt: new Date().toISOString() });
+  }
 
   m = path.match(/^\/api\/orders\/store\/([^/]+)$/);
   if (m && method === 'GET') {
