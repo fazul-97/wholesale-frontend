@@ -11,13 +11,13 @@ export default function ReconciliationPage() {
     queryFn: () => api.get('/store/reconciliation').then(r => r.data.data),
   });
 
-  if (isLoading) return (
+  if (isLoading || !data) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  const d = data!;
+  const d = data;
 
   const chartData = d.dailyRecords.map((r: any) => ({
     date: r.date,
@@ -59,7 +59,7 @@ export default function ReconciliationPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-            <Tooltip formatter={(v: number) => `KES ${v.toLocaleString()}`} />
+            <Tooltip formatter={(v: unknown) => `KES ${Number(v).toLocaleString()}`} />
             <Legend />
             <Bar dataKey="Cash"        stackId="a" fill="#f59e0b" radius={[0,0,0,0]} />
             <Bar dataKey="M-Pesa"      stackId="a" fill="#16a34a" radius={[0,0,0,0]} />

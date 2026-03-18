@@ -1,9 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { ShoppingBag, Package, Tag, TrendingUp, Clock, CheckCircle, Truck, Loader2 } from 'lucide-react';
+import { ShoppingBag, Package, Tag, TrendingUp, Clock, CheckCircle, Truck, Loader2, BarChart2, DollarSign, ClipboardList, Users } from 'lucide-react';
 import { useStoreOrders } from '@/hooks/useApi';
 import { OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
 import { fmt } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
 
 interface Order { id: string; orderNumber: string; status: string; total: number; createdAt: string; customer: { name?: string | null; phone: string }; }
 
@@ -16,8 +17,10 @@ const STAT_STATUSES = [
 
 export default function StoreDashboard() {
   const { data, isLoading } = useStoreOrders({ page: 1 });
+  const { user } = useAuthStore();
   const orders: Order[] = data?.data || [];
   const totals = data?.totals || {};
+  const isOwner = user?.role === 'STORE_OWNER';
 
   // Today's revenue from delivered
   const today = new Date().toDateString();
@@ -76,6 +79,26 @@ export default function StoreDashboard() {
           <Tag size={20} className="text-navy" />
           <span className="text-xs font-medium text-navy">Discounts</span>
         </Link>
+        {isOwner && (
+          <>
+            <Link href="/store/analytics" className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2 hover:shadow-md transition-shadow">
+              <BarChart2 size={20} className="text-emerald-600" />
+              <span className="text-xs font-medium text-navy">Analytics</span>
+            </Link>
+            <Link href="/store/finance" className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2 hover:shadow-md transition-shadow">
+              <DollarSign size={20} className="text-emerald-600" />
+              <span className="text-xs font-medium text-navy">Finance</span>
+            </Link>
+            <Link href="/store/reconciliation" className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2 hover:shadow-md transition-shadow">
+              <ClipboardList size={20} className="text-emerald-600" />
+              <span className="text-xs font-medium text-navy">Reconcile</span>
+            </Link>
+            <Link href="/store/team" className="bg-white rounded-2xl border border-gray-100 p-3 flex flex-col items-center gap-2 hover:shadow-md transition-shadow col-span-3 sm:col-span-1">
+              <Users size={20} className="text-emerald-600" />
+              <span className="text-xs font-medium text-navy">Team</span>
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Recent Orders */}

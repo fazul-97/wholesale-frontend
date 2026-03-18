@@ -30,13 +30,13 @@ export default function AnalyticsPage() {
     queryFn: () => api.get('/store/analytics').then(r => r.data.data),
   });
 
-  if (isLoading) return (
+  if (isLoading || !data) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  const d = data!;
+  const d = data;
 
   return (
     <div className="space-y-6">
@@ -58,7 +58,7 @@ export default function AnalyticsPage() {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-            <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, 'Revenue']} />
+            <Tooltip formatter={(v: unknown) => [`KES ${Number(v).toLocaleString()}`, 'Revenue']} />
             <Line type="monotone" dataKey="revenue" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 4, fill: '#f59e0b' }} />
           </LineChart>
         </ResponsiveContainer>
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={90} />
-              <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, 'Revenue']} />
+              <Tooltip formatter={(v: unknown) => [`KES ${Number(v).toLocaleString()}`, 'Revenue']} />
               <Bar dataKey="revenue" fill="#1e3a5f" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -83,7 +83,8 @@ export default function AnalyticsPage() {
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Orders by Status</h2>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={d.ordersByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} label={({ status, count }) => `${status} (${count})`} labelLine={false}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <Pie data={d.ordersByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} label={(props: any) => `${props.status} (${props.count})`} labelLine={false}>
                 {d.ordersByStatus.map((_: any, i: number) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}

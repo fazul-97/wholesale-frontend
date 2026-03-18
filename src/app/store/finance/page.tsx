@@ -22,13 +22,13 @@ export default function FinancePage() {
     queryFn: () => api.get('/store/finance').then(r => r.data.data),
   });
 
-  if (isLoading) return (
+  if (isLoading || !data) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  const d = data!;
+  const d = data;
 
   return (
     <div className="space-y-6">
@@ -60,13 +60,14 @@ export default function FinancePage() {
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Payment Methods</h2>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <Pie data={d.paymentMethods} dataKey="amount" nameKey="method" cx="50%" cy="50%" outerRadius={70}
-                label={({ method, count }) => `${method} (${count})`}>
+                label={(props: any) => `${props.method} (${props.count})`}>
                 {d.paymentMethods.map((m: any) => (
                   <Cell key={m.method} fill={METHOD_COLORS[m.method] ?? '#6b7280'} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, '']} />
+              <Tooltip formatter={(v: unknown) => [`KES ${Number(v).toLocaleString()}`, '']} />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex justify-around mt-2">

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Tag, Store, BarChart2, DollarSign, ClipboardList, Truck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Tag, Store, BarChart2, DollarSign, ClipboardList, Truck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLogout } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,6 +16,7 @@ const ALL_NAV = [
   { href: '/store/finance',       icon: DollarSign,      label: 'Finance',        roles: ['STORE_OWNER','CASHIER'] },
   { href: '/store/reconciliation',icon: ClipboardList,   label: 'Reconciliation', roles: ['STORE_OWNER','CASHIER'] },
   { href: '/store/discounts',     icon: Tag,             label: 'Discounts',      roles: ['STORE_OWNER'] },
+  { href: '/store/team',          icon: Users,           label: 'Team',           roles: ['STORE_OWNER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
