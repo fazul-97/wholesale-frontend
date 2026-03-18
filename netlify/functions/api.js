@@ -134,8 +134,27 @@ function routeStatic(method, path, body) {
       return raw({ success:true, data: ORDERS, total: ORDERS.length });
     case 'GET /api/orders/last':
       return ok(ORDERS[0]);
-    case 'POST /api/orders':
-      return ok({ id:'o_new', orderNumber:'MW-00099', status:'PENDING', total:999, paymentMethod: body.paymentMethod || 'MPESA', createdAt: new Date().toISOString() });
+    case 'POST /api/orders': {
+      const newOrder = {
+        id: 'o_' + Date.now(),
+        orderNumber: 'MW-' + String(100 + ORDERS.length).padStart(5, '0'),
+        status: 'PENDING',
+        total: body.items ? body.items.reduce((s, i) => { const p = PRODUCTS.find(x => x.id === i.productId); return s + (p ? (p.salePrice || p.price) * i.quantity : 0); }, 0) : 999,
+        subtotal: body.items ? body.items.reduce((s, i) => { const p = PRODUCTS.find(x => x.id === i.productId); return s + (p ? (p.salePrice || p.price) * i.quantity : 0); }, 0) : 999,
+        discountAmount: 0, loyaltyDiscount: 0, loyaltyPointsEarned: 0,
+        paymentMethod: body.paymentMethod || 'MPESA',
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        note: body.note || null, discountCode: body.discountCode || null,
+        customer: { name:'Demo Customer', phone:'+254711000001', loyaltyPoints:450 },
+        address: { label:'Home', line1:'123 Ngong Road', city:'Nairobi' },
+        items: body.items ? body.items.map((i, idx) => {
+          const p = PRODUCTS.find(x => x.id === i.productId) || PRODUCTS[0];
+          return { id: 'oi_' + Date.now() + idx, product: p, requestedQty: i.quantity, confirmedQty: null, price: p.salePrice || p.price };
+        }) : [],
+      };
+      ORDERS.unshift(newOrder);
+      return ok(newOrder);
+    }
     case 'POST /api/orders/validate-discount': {
       const d = DISCOUNTS.find(x => x.code === body.code && x.isActive);
       if (d) {
@@ -144,8 +163,10 @@ function routeStatic(method, path, body) {
       }
       return ok({ valid:false, discountAmount:0, message:'Invalid or expired code' });
     }
-    case 'GET /api/orders/store/all':
-      return raw({ success:true, data: ORDERS, total: ORDERS.length, pages:1, totals:{ PENDING:1, CONFIRMED:0, MODIFIED:1, DISPATCHED:0, DELIVERED:1 } });
+    case 'GET /api/orders/store/all': {
+      const totals = ORDERS.reduce((acc, o) => { acc[o.status] = (acc[o.status]||0)+1; return acc; }, {});
+      return raw({ success:true, data: ORDERS, total: ORDERS.length, pages:1, totals });
+    }
 
     // Discounts
     case 'GET /api/store/discounts':
@@ -248,10 +269,26 @@ function routeDynamic(method, path, body) {
   let m;
 
   m = path.match(/^\/api\/orders\/store\/([^/]+)\/confirm$/);
-  if (m && method === 'PUT') return ok({ ...ORDERS[1], status:'CONFIRMED' });
+  if (m && method === 'PUT') {
+    const idx = ORDERS.findIndex(x => x.id === m[1]);
+    const order = idx !== -1 ? ORDERS[idx] : ORDERS[1];
+    // Apply confirmed quantities
+    const updatedItems = order.items.map(item => {
+      const ci = body.items && body.items.find(i => i.orderItemId === item.id);
+      return ci ? { ...item, confirmedQty: ci.confirmedQty } : item;
+    });
+    const hasModified = updatedItems.some(i => i.confirmedQty !== null && i.confirmedQty !== i.requestedQty);
+    const updated = { ...order, items: updatedItems, status: hasModified ? 'MODIFIED' : 'CONFIRMED', updatedAt: new Date().toISOString() };
+    if (idx !== -1) ORDERS[idx] = updated;
+    return ok(updated);
+  }
 
   m = path.match(/^\/api\/orders\/store\/([^/]+)\/status$/);
-  if (m && method === 'PUT') return ok({ status: body.status });
+  if (m && method === 'PUT') {
+    const idx = ORDERS.findIndex(x => x.id === m[1]);
+    if (idx !== -1) ORDERS[idx] = { ...ORDERS[idx], status: body.status, updatedAt: new Date().toISOString() };
+    return ok({ status: body.status });
+  }
 
   m = path.match(/^\/api\/orders\/store\/([^/]+)\/notes$/);
   if (m && method === 'POST') return raw({ success: true });
