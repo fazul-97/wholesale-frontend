@@ -86,6 +86,13 @@ export default function LoginPage() {
                 >
                   {requestOtp.isPending ? <Loader2 size={18} className="animate-spin" /> : <><span>Send OTP</span><ArrowRight size={16} /></>}
                 </button>
+
+                {/* Demo hint */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                  <p className="text-xs text-amber-700">
+                    <span className="font-semibold">Demo:</span> Use any phone number, then enter code <span className="font-mono font-bold">123456</span>
+                  </p>
+                </div>
               </div>
             </>
           ) : (
@@ -125,7 +132,18 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-sm text-gray-400 mt-6">
+        {/* Sign up link */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mt-4 text-center">
+          <p className="text-sm text-gray-500">New to Metro Wholesale?</p>
+          <Link
+            href="/signup"
+            className="mt-2 flex items-center justify-center gap-2 w-full border-2 border-amber-500 text-amber-600 font-bold py-2.5 rounded-xl hover:bg-amber-50 transition-colors text-sm"
+          >
+            Create a free account <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <p className="text-center text-sm text-gray-400 mt-4">
           Store owner?{' '}
           <Link href="/store/login" className="text-amber-600 font-semibold hover:text-amber-700">
             Sign in here

@@ -70,6 +70,9 @@ const STORE_USERS = [
   { email:'driver@metrowholesale.co.ke',  password:'drive1234', id:'driver1',  role:'DRIVER',      name:'Tom Driver',     token: MOCK_DRIVER_TOKEN },
 ];
 
+// Holds pending sign-up info until OTP is verified
+const PENDING_REGISTRATIONS = {};
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -96,10 +99,26 @@ function routeStatic(method, path, body) {
       if (u) return ok({ user: { id:u.id, role:u.role, email:u.email, name:u.name }, accessToken: u.token, refreshToken: 'refresh_mock' });
       return err('Invalid credentials', 401);
     }
+    case 'POST /api/auth/register': {
+      // Save name + business for when OTP is verified
+      const regPhone = body.phone || '';
+      PENDING_REGISTRATIONS[regPhone] = { name: body.name || 'New Customer', businessName: body.businessName || '' };
+      return raw({ success: true, message: 'OTP sent! Use code: 123456 for demo' });
+    }
     case 'POST /api/auth/request-otp':
       return raw({ success: true, message: 'OTP sent! Use code: 123456 for demo' });
-    case 'POST /api/auth/verify-otp':
-      return ok({ user: { id:'cust1', role:'CUSTOMER', phone: body.phone || '+254711000001', name:'Demo Customer' }, accessToken: MOCK_CUSTOMER_TOKEN, refreshToken: 'refresh_mock' });
+    case 'POST /api/auth/verify-otp': {
+      // Use registered name if available, else fallback
+      const phone = body.phone || '+254711000001';
+      const pending = PENDING_REGISTRATIONS[phone];
+      const userName = body.name || (pending && pending.name) || 'Demo Customer';
+      const bizName = body.businessName || (pending && pending.businessName) || '';
+      if (pending) delete PENDING_REGISTRATIONS[phone];
+      return ok({
+        user: { id: 'cust_' + Date.now(), role: 'CUSTOMER', phone, name: userName, businessName: bizName },
+        accessToken: MOCK_CUSTOMER_TOKEN, refreshToken: 'refresh_mock'
+      });
+    }
     case 'POST /api/auth/refresh':
       return ok({ accessToken: MOCK_TOKEN, refreshToken: 'refresh_mock' });
     case 'POST /api/auth/logout':
