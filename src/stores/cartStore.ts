@@ -15,6 +15,8 @@ interface CartState {
   discountCode: string;
   discountAmount: number;
   loyaltyPointsToRedeem: number;
+  _hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
   addItem: (item: Omit<CartItem, 'quantity'>, qty?: number) => void;
   updateQty: (productId: string, qty: number) => void;
   removeItem: (productId: string) => void;
@@ -33,6 +35,9 @@ export const useCartStore = create<CartState>()(
       discountCode: '',
       discountAmount: 0,
       loyaltyPointsToRedeem: 0,
+      _hasHydrated: false,
+
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
 
       addItem: (item, qty = 1) =>
         set(s => {
@@ -59,6 +64,11 @@ export const useCartStore = create<CartState>()(
       },
       get itemCount() { return get().items.reduce((s, i) => s + i.quantity, 0); },
     }),
-    { name: 'cart-store' }
+    {
+      name: 'cart-store',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
   )
 );
