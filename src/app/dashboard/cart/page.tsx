@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Minus, Trash2, MapPin, ChevronDown, Loader2,
@@ -30,14 +30,65 @@ function productEmoji(name: string): string {
   return '📦';
 }
 
-function MpesaModal({ total, phone, onDone }: { total: number; phone: string; onDone: () => void }) {
-  const [step, setStep] = useState<'prompt' | 'waiting' | 'success'>('prompt');
+function MpesaModal({ total, phone, orderId, onDone }: { total: number; phone: string; orderId: string; onDone: () => void }) {
+  const [step, setStep]               = useState<'prompt' | 'waiting' | 'success' | 'failed'>('prompt');
+  const [checkoutId, setCheckoutId]   = useState('');
+  const [txnId, setTxnId]             = useState('');
+  const [errorMsg, setErrorMsg]       = useState('');
+  const pollTimer                     = useRef<ReturnType<typeof setTimeout>>();
   const short = phone.replace(/^\+254/, '0');
-  const txnId = 'QKJ' + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-  const simulate = () => {
+  useEffect(() => () => clearTimeout(pollTimer.current), []);
+
+  const pollStatus = (id: string, attempts = 0) => {
+    if (attempts > 20) {
+      setStep('failed');
+      setErrorMsg('Payment timed out. Please try again.');
+      return;
+    }
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const res  = await fetch('/api/mpesa/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkoutRequestId: id }),
+        });
+        const data = await res.json();
+        if (String(data.ResultCode) === '0') {
+          setTxnId(data.CheckoutRequestID || id);
+          setStep('success');
+        } else if (data.ResultCode !== undefined && data.ResultCode !== null && String(data.ResultCode) !== '1032') {
+          setStep('failed');
+          setErrorMsg(data.ResultDesc || 'Payment was not completed.');
+        } else {
+          pollStatus(id, attempts + 1);
+        }
+      } catch {
+        pollStatus(id, attempts + 1);
+      }
+    }, 3000);
+  };
+
+  const sendSTK = async () => {
     setStep('waiting');
-    setTimeout(() => setStep('success'), 3000);
+    try {
+      const res  = await fetch('/api/mpesa/stkpush', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, amount: total, orderId }),
+      });
+      const data = await res.json();
+      if (data.success && data.CheckoutRequestID) {
+        setCheckoutId(data.CheckoutRequestID);
+        pollStatus(data.CheckoutRequestID);
+      } else {
+        setStep('failed');
+        setErrorMsg(data.message || 'Could not initiate STK push.');
+      }
+    } catch {
+      setStep('failed');
+      setErrorMsg('Network error. Please try again.');
+    }
   };
 
   return (
@@ -54,14 +105,14 @@ function MpesaModal({ total, phone, onDone }: { total: number; phone: string; on
           {step === 'prompt' && (
             <>
               <p className="text-gray-700 text-sm leading-relaxed">
-                An STK push will be sent to <span className="font-bold text-gray-900">{short}</span>.<br />
-                Enter your M-Pesa PIN when prompted.
+                A payment prompt will be sent to <span className="font-bold text-gray-900">{short}</span>.<br />
+                Enter your M-Pesa PIN when it appears on your phone.
               </p>
               <div className="bg-green-50 rounded-xl p-3 text-left text-xs text-green-800">
-                <p className="font-semibold mb-1">Demo Mode</p>
-                <p>Simulates Safaricom Daraja STK Push. In production, a real PIN prompt is sent to the customer&apos;s phone.</p>
+                <p className="font-semibold mb-1">Powered by Safaricom Daraja</p>
+                <p>Real STK push via M-Pesa Express API. Your PIN is entered on your phone — never shared with us.</p>
               </div>
-              <button onClick={simulate} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors">
+              <button onClick={sendSTK} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors">
                 Send STK Push
               </button>
             </>
@@ -71,6 +122,7 @@ function MpesaModal({ total, phone, onDone }: { total: number; phone: string; on
               <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-gray-700 text-sm font-medium">Waiting for M-Pesa confirmation...</p>
               <p className="text-gray-400 text-xs">Check your phone and enter your PIN</p>
+              {checkoutId && <p className="text-gray-300 text-xs font-mono">{checkoutId.slice(0, 20)}…</p>}
             </>
           )}
           {step === 'success' && (
@@ -83,11 +135,23 @@ function MpesaModal({ total, phone, onDone }: { total: number; phone: string; on
                 <p className="text-sm text-gray-500 mt-1">M-Pesa payment of <strong>{fmt.currency(total)}</strong> received</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-left text-xs text-gray-600 space-y-1">
-                <p><span className="text-gray-400">Transaction ID: </span><span className="font-mono font-bold">{txnId}</span></p>
+                <p><span className="text-gray-400">Checkout ID: </span><span className="font-mono font-bold text-[10px]">{txnId}</span></p>
                 <p><span className="text-gray-400">Account: </span>Metro Wholesale</p>
               </div>
               <button onClick={onDone} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors">
                 View My Orders
+              </button>
+            </>
+          )}
+          {step === 'failed' && (
+            <>
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-3xl">✗</span>
+              </div>
+              <p className="text-base font-bold text-gray-900">Payment Failed</p>
+              <p className="text-sm text-gray-500">{errorMsg}</p>
+              <button onClick={() => { setStep('prompt'); setErrorMsg(''); }} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors">
+                Try Again
               </button>
             </>
           )}
@@ -111,6 +175,7 @@ export default function CartPage() {
   const [placed, setPlaced] = useState(false);
   const [showMpesa, setShowMpesa] = useState(false);
   const [savedTotal, setSavedTotal] = useState(0);
+  const [mpesaOrderId, setMpesaOrderId] = useState('');
   const placeOrder = usePlaceOrder();
 
   const addrs = addresses as Address[];
@@ -129,9 +194,10 @@ export default function CartPage() {
       note: note || undefined,
       paymentMethod,
     }, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         if (paymentMethod === 'MPESA') {
           setSavedTotal(orderTotal);
+          setMpesaOrderId(data?.data?.orderNumber || data?.data?.id || 'MW-ORDER');
           clearCart();
           setShowMpesa(true);
         } else {
@@ -162,6 +228,7 @@ export default function CartPage() {
     <MpesaModal
       total={savedTotal}
       phone={me?.phone || '+254700000000'}
+      orderId={mpesaOrderId}
       onDone={() => { setShowMpesa(false); router.push('/dashboard/orders'); }}
     />
   );
